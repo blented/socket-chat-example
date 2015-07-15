@@ -13,24 +13,126 @@ app.get('/', function(req, res)
 	res.sendFile('index.html', {root: __dirname})
 })
 
+var userID = 0
+
+var ogJobs = [
+	{
+		task: 'whatever',
+		time: 10
+	},
+	{
+		task: 'someScript',
+		time: 20
+	},
+	{
+		task: 'fast',
+		time: 0.1
+	},
+	{
+		task: 'normal',
+		time: 2
+	}
+]
+var jobs = _.clone(ogJobs)
+var gettingJobs = false
+function resetJobs()
+{
+	jobs = _.clone(ogJobs)
+	gettingJobs = false
+}
+
+var jobRequests = {}
+var fillTimeout = 200
+
+function fillJobRequests()
+{
+	var jobInfo, jobRequest
+	var requests = _.values(jobRequests)
+
+	console.log('fillJobRequests:', _.pluck(requests, 'info.userID'))
+	while (requests.length)
+	{
+		jobRequest = requests.pop()
+
+		// no jobs, add more in 8 seconds
+
+		if (!jobs.length)
+		{
+			if (!gettingJobs)
+			{
+				gettingJobs = true
+				setTimeout(resetJobs, 8000)
+			}
+
+			console.log('no jobs for:', jobRequest.info.id)
+			jobRequest.socket.emit('wait')
+		}
+		else
+		{
+			jobInfo = jobs.pop()
+			console.log('assign', jobInfo.task,
+				'to', jobRequest.info.id)
+			jobRequest.socket.emit('job', jobInfo)
+		}
+
+	}
+
+	jobRequests = {}
+
+	// come back soon!
+	setTimeout(fillJobRequests, fillTimeout)
+}
+
+setTimeout(fillJobRequests, fillTimeout)
+
 io.on('connection', function(socket)
 {
-	console.log('a user connected')
-	socket.broadcast.emit('hi')
+	userID += 1
+	console.log('user:', userID, 'connected')
+	socket.info = {
+		userID: userID,
+		id: socket.id
+	}
+
+	socket.broadcast.emit('hi from: ' + socket.id)
 
 	socket.on('disconnect', function()
 	{
 		console.log('user disconnected')
 	})
 
-	socket.on('chat message', function(msg)
+	socket.on('chatMessage', function(msg)
 	{
 		console.log('message: ' + msg)
+		io.emit('chatMessage', msg)
 	})
 
-	socket.on('chat message', function(msg)
+
+
+	socket.emit('welcome', socket.info, function(info)
 	{
-		io.emit('chat message', msg)
+		if (info.userID != socket.info.userID)
+			throw new Error('mismatched userID')
+		console.log('welcome confirmed:', socket.info.userID)
+	})
+
+
+	socket.on('jobRequest', function(info)
+	{
+		jobRequests[socket.id] = {
+			socket: socket,
+			info: info
+		}
+	})
+
+	socket.on('update', function()
+	{
+		console.log('render update from:', socket.id)
+	})
+
+	socket.on('status', function()
+	{
+		io.emit()
 	})
 })
 
