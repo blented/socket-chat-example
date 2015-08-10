@@ -4,12 +4,13 @@ import socketIO_client
 socket = socketIO_client.SocketIO('127.0.0.1', 3000)
 
 nodeInfo = None
+currentJob = None
 
 def welcome(info, callback):
 	global nodeInfo
 	nodeInfo = info
 	print 'Welcome: ', nodeInfo['userID'], nodeInfo['id']
-	requestJob()
+	wait()
 	callback(info)
 
 
@@ -22,6 +23,8 @@ def requestJob():
 
 
 def jobLoop(jobInfo):
+	global currentJob
+	currentJob = jobInfo
 	print 'starting:', jobInfo['task']
 	jobTime = jobInfo['time']
 	seconds = 0
@@ -32,14 +35,18 @@ def jobLoop(jobInfo):
 		socket.wait(seconds=1)
 		seconds += 1
 
-	requestJob()
+	currentJob = None
+	wait()
 
 socket.on('job', jobLoop)
 
 def wait():
+	global currentJob
 	print 'waiting for more jobs'
-	socket.wait(seconds=1)
-	requestJob()
+	if currentJob == None:
+		requestJob()
+		socket.wait(seconds=1)
+		wait()
 
 socket.on('wait', wait)
 

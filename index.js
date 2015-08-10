@@ -42,12 +42,13 @@ function resetJobs()
 }
 
 var jobRequests = {}
-var fillTimeout = 200
+var fillTimeout = 1000
 
 function fillJobRequests()
 {
 	var jobInfo, jobRequest
 	var requests = _.values(jobRequests)
+	jobRequests = {}
 
 	console.log('fillJobRequests:', _.pluck(requests, 'info.userID'))
 	while (requests.length)
@@ -77,7 +78,6 @@ function fillJobRequests()
 
 	}
 
-	jobRequests = {}
 
 	// come back soon!
 	setTimeout(fillJobRequests, fillTimeout)
@@ -130,10 +130,6 @@ io.on('connection', function(socket)
 		console.log('render update from:', socket.id)
 	})
 
-	socket.on('status', function()
-	{
-		io.emit()
-	})
 })
 
 http.listen(port, function()
@@ -143,7 +139,6 @@ http.listen(port, function()
 	// loop through the networkInterfaces and list
 	// each IPv4 that we find
 	var prefix
-	var IPs = ''
 	_.each(os.networkInterfaces(), function(i)
 	{
 		_.each(i, function(entry)
@@ -166,11 +161,7 @@ http.listen(port, function()
 				console.log(prefix + ' http://' +
 					entry.address + ':' +
 					port)
-
-				if (!entry.internal)
-					IPs += '<li>' + entry.address + '</li>\n'
 			}
 		})
 	})
-	IPs = IPs.slice(0, -1)
 })
